@@ -1,11 +1,12 @@
 # Captures the scene in both wall modes at the reference sizes.
-# Usage: .\tools\capture-scenes.ps1 [-Exe path] [-OutDir folder] [-Sizes 1920x1080,...] [-Extra "--seed 7"]
+# Usage: .\tools\capture-scenes.ps1 [-Exe path] [-OutDir folder] [-Sizes 1920x1080,...] [-Orientation horizontal|vertical]
 param(
     [string]$Exe = "",
     [string]$OutDir = "screenshots",
     [string[]]$Sizes = @("1920x1080", "2560x1440", "2560x1080", "3440x1440"),
     [string[]]$Modes = @("perspective", "flat"),
-    [string]$Seed = "7"
+    [string]$Seed = "7",
+    [string]$Orientation = "horizontal"
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,8 +20,9 @@ if (-not $Exe -or -not (Test-Path $Exe)) { throw "ScreensaverStargate.exe not fo
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 foreach ($mode in $Modes) {
     foreach ($size in $Sizes) {
-        $file = Join-Path $OutDir "$mode-$size.png"
-        $p = Start-Process -FilePath $Exe -ArgumentList "--screenshot `"$file`" --size $size --seed $Seed --mode $mode" -PassThru -Wait
+        $suffix = if ($Orientation -eq "vertical") { "-vertical" } else { "" }
+        $file = Join-Path $OutDir "$mode$suffix-$size.png"
+        $p = Start-Process -FilePath $Exe -ArgumentList "--screenshot `"$file`" --size $size --seed $Seed --mode $mode --orientation $Orientation" -PassThru -Wait
         if ($p.ExitCode -ne 0) { throw "Capture failed for $mode $size (exit code $($p.ExitCode))." }
         Write-Host "Saved $file"
     }

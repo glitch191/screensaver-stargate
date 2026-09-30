@@ -1,5 +1,6 @@
 #version 330 core
-// Star Gate walls: two surfaces left and right of the screen center, covered
+// Star Gate walls: two surfaces on each side of the screen center (left and right,
+// or above and below in the vertical orientation), covered
 // with continuous neon lines, columns of short bars and glowing patches, in
 // large color fields that fade into new neon hues. Perspective: the walls run
 // in depth and converge to a bright seam at the center. Flat: the same walls
@@ -10,6 +11,7 @@ out vec4 fragColor;
 
 uniform vec2 uRes;          // render size in pixels
 uniform int uMode;          // 0 = perspective, 1 = flat
+uniform int uVertical;      // 1 = walls above and below, scrolling vertically
 uniform float uScroll;      // scroll phase in color keys, wrapped by PERIOD
 uniform float uColorPhase;  // color evolution phase in color keys, wrapped by PERIOD
 uniform float uDensity;     // lines per wall unit (perspective) or per half screen height (flat)
@@ -134,7 +136,11 @@ float pattern(int type, float s, float yl, float fs, float fy, float merged, uin
 void main()
 {
     // Height-normalized coordinates: y in [-1, 1], x grows with the aspect ratio.
+    // q.x runs along the motion (away from the center line), q.y across it; the
+    // vertical orientation swaps the two axes, which turns the whole scene a quarter turn.
     vec2 q = (gl_FragCoord.xy - 0.5 * uRes) / (0.5 * uRes.y);
+    if (uVertical == 1)
+        q = q.yx;
     float ax = abs(q.x);
     uint side = q.x < 0.0 ? 0u : 1u;
     uint wall = pcg(uSeed ^ (side * 0x85ebca6bu + 17u));

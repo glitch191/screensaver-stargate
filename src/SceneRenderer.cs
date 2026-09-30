@@ -8,6 +8,7 @@ internal struct FrameParams
 {
     public int Width, Height;
     public WallMode Mode;
+    public bool Vertical;
     public float Scroll, ColorPhase;
     /// <summary>Seconds of simulated time, wrapped, for grain, gate weave and flicker.</summary>
     public float Time;
@@ -26,6 +27,7 @@ internal struct FrameParams
             Width = width,
             Height = height,
             Mode = s.WallMode,
+            Vertical = s.Orientation == ScrollOrientation.Vertical,
             Seed = seed,
             Density = s.WallMode == WallMode.Perspective ? 6f + 34f * density : 5f + 35f * density,
             Thickness = 0.08f + 0.77f * (s.LineThickness / 100f),
@@ -63,10 +65,10 @@ internal sealed class SceneRenderer : IDisposable
     int _outTex, _outFbo, _outW, _outH;
 
     // Uniform locations.
-    readonly int _sRes, _sMode, _sScroll, _sColor, _sDensity, _sThickness, _sSeed;
+    readonly int _sRes, _sVertical, _sMode, _sScroll, _sColor, _sDensity, _sThickness, _sSeed;
     readonly int _dSrc, _dHalf, _dPrefilter, _dThreshold;
     readonly int _uSrc, _uAdd, _uHalf, _uSpread;
-    readonly int _cScene, _cBloom, _cFont, _cRes, _cBloomStrength, _cLineHalf, _cLineSoft, _cDiag, _cTextScale, _cText, _cTime, _cFilmScale;
+    readonly int _cScene, _cBloom, _cFont, _cRes, _cBloomStrength, _cLineHalf, _cLineSoft, _cDiag, _cTextScale, _cText, _cTime, _cFilmScale, _cVertical;
 
     public SceneRenderer()
     {
@@ -78,6 +80,7 @@ internal sealed class SceneRenderer : IDisposable
 
         _sRes = GL.GetUniformLocation(_sceneProg, "uRes");
         _sMode = GL.GetUniformLocation(_sceneProg, "uMode");
+        _sVertical = GL.GetUniformLocation(_sceneProg, "uVertical");
         _sScroll = GL.GetUniformLocation(_sceneProg, "uScroll");
         _sColor = GL.GetUniformLocation(_sceneProg, "uColorPhase");
         _sDensity = GL.GetUniformLocation(_sceneProg, "uDensity");
@@ -106,6 +109,7 @@ internal sealed class SceneRenderer : IDisposable
         _cText = GL.GetUniformLocation(_compProg, "uText");
         _cTime = GL.GetUniformLocation(_compProg, "uTime");
         _cFilmScale = GL.GetUniformLocation(_compProg, "uFilmScale");
+        _cVertical = GL.GetUniformLocation(_compProg, "uVertical");
 
         _vao = GL.GenVertexArray();
 
@@ -144,6 +148,7 @@ internal sealed class SceneRenderer : IDisposable
         GL.UseProgram(_sceneProg);
         GL.Uniform2(_sRes, (float)_width, (float)_height);
         GL.Uniform1(_sMode, p.Mode == WallMode.Perspective ? 0 : 1);
+        GL.Uniform1(_sVertical, p.Vertical ? 1 : 0);
         GL.Uniform1(_sScroll, p.Scroll);
         GL.Uniform1(_sColor, p.ColorPhase);
         GL.Uniform1(_sDensity, p.Density);
@@ -221,6 +226,7 @@ internal sealed class SceneRenderer : IDisposable
         GL.Uniform1(_cTextScale, (float)Math.Max(1, _height / 540));
         GL.Uniform1(_cTime, p.Time);
         GL.Uniform1(_cFilmScale, Math.Max(0.5f, _height / 1080f));
+        GL.Uniform1(_cVertical, p.Vertical ? 1 : 0);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
         GL.ActiveTexture(TextureUnit.Texture0);
     }

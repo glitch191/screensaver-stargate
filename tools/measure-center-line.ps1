@@ -3,7 +3,8 @@
 # the pixels just outside it; darkness = 1 - actual / estimate. The darkness profile,
 # averaged over all rows, gives the band center (centroid) and its width (integral).
 # Usage: .\tools\measure-center-line.ps1 screenshots\flat-*.png
-param([Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)][string[]]$Paths)
+#        .\tools\measure-center-line.ps1 -Horizontal screenshots\flat-vertical-*.png   (horizontal line)
+param([switch]$Horizontal, [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)][string[]]$Paths)
 
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
 using System;
@@ -13,10 +14,12 @@ using System.Runtime.InteropServices;
 public static class CenterLine
 {
     // Returns { centroid offset from the exact image center, integrated width } in pixels.
-    public static double[] Measure(string path, int reach)
+    public static double[] Measure(string path, int reach, bool rotate)
     {
         using (var bmp = new Bitmap(path))
         {
+            // A horizontal line is measured by turning the image a quarter turn first.
+            if (rotate) bmp.RotateFlip(RotateFlipType.Rotate90FlipNone);
             int w = bmp.Width, h = bmp.Height;
             int x0 = w / 2 - reach, x1 = w / 2 + reach - 1; // reference columns outside the band
             var data = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
@@ -54,9 +57,10 @@ public static class CenterLine
 foreach ($pattern in $Paths) {
     foreach ($file in Get-ChildItem $pattern) {
         $img = [System.Drawing.Image]::FromFile($file.FullName); $w = $img.Width; $h = $img.Height; $img.Dispose()
-        $target = 6.0 * $h / 1080
+        if ($Horizontal) { $w, $h = $h, $w }
+        $target = 6.0 * $(if ($Horizontal) { $w } else { $h }) / 1080
         $reach = [int]([Math]::Ceiling($target * 1.2)) + 3
-        $m = [CenterLine]::Measure($file.FullName, $reach)
+        $m = [CenterLine]::Measure($file.FullName, $reach, [bool]$Horizontal)
         "{0,-28} {1}x{2}  center offset {3:+0.00;-0.00} px  width {4:N2} px (setting 6 px at 1080p = {5:N2})  rows used {6}" -f `
             $file.Name, $w, $h, $m[0], $m[1], $target, $m[2]
     }

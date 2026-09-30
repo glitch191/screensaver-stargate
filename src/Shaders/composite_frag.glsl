@@ -17,6 +17,7 @@ uniform int uDiag;
 uniform float uTextScale;
 uniform float uTime;            // seconds of simulated time, wrapped
 uniform float uFilmScale;       // screen height / 1080, so the grain looks the same at every resolution
+uniform int uVertical;          // 1 = horizontal center line (walls above and below)
 
 const int TEXT_COLS = 44;
 const int TEXT_ROWS = 4;
@@ -135,16 +136,19 @@ void main()
 
     // Center line coverage, over everything above, applied in display values
     // so the perceived width matches the setting.
-    float cx = 0.5 * uRes.x;
+    // The line is vertical at the exact horizontal center, or horizontal at the exact
+    // vertical center in the vertical orientation.
+    float pos = uVertical == 1 ? gl_FragCoord.y : gl_FragCoord.x;
+    float cx = 0.5 * (uVertical == 1 ? uRes.y : uRes.x);
     float cover;
     if (uLineSoft == 1)
     {
-        float dist = abs(gl_FragCoord.x - cx);
+        float dist = abs(pos - cx);
         cover = 1.0 - smoothstep(0.4 * uLineHalfWidth, 1.6 * uLineHalfWidth, dist);
     }
     else
     {
-        float left = floor(gl_FragCoord.x);
+        float left = floor(pos);
         cover = clamp(min(left + 1.0, cx + uLineHalfWidth) - max(left, cx - uLineHalfWidth), 0.0, 1.0);
     }
     outc = max(outc, 0.0) * (1.0 - cover);

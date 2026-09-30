@@ -6,6 +6,7 @@ namespace ScreensaverStargate;
 public enum WallMode { Perspective, Flat }
 public enum CenterLineEdge { Soft, Sharp }
 public enum ScrollDirection { TowardViewer, AwayFromViewer }
+public enum ScrollOrientation { Horizontal, Vertical }
 public enum ScreenSelection { AllScreens, PrimaryOnly }
 public enum FrameRateLimit { Automatic, Custom, Unlimited }
 
@@ -29,6 +30,8 @@ public sealed class Settings
     public int CenterLineWidth { get; set; } = 6;
     public CenterLineEdge CenterLineEdge { get; set; } = CenterLineEdge.Soft;
     public ScrollDirection Direction { get; set; } = ScrollDirection.TowardViewer;
+    /// <summary>Horizontal: walls left and right, vertical center line. Vertical: walls above and below.</summary>
+    public ScrollOrientation Orientation { get; set; } = ScrollOrientation.Horizontal;
     public ScreenSelection Screens { get; set; } = ScreenSelection.AllScreens;
     public FrameRateLimit FrameRateLimit { get; set; } = FrameRateLimit.Automatic;
     public int CustomFrameRate { get; set; } = 144;
@@ -99,6 +102,7 @@ public sealed class Settings
         if (!Enum.IsDefined(WallMode)) WallMode = WallMode.Perspective;
         if (!Enum.IsDefined(CenterLineEdge)) CenterLineEdge = CenterLineEdge.Soft;
         if (!Enum.IsDefined(Direction)) Direction = ScrollDirection.TowardViewer;
+        if (!Enum.IsDefined(Orientation)) Orientation = ScrollOrientation.Horizontal;
         if (!Enum.IsDefined(Screens)) Screens = ScreenSelection.AllScreens;
         if (!Enum.IsDefined(FrameRateLimit)) FrameRateLimit = FrameRateLimit.Automatic;
     }

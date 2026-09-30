@@ -4,7 +4,7 @@ internal enum LaunchAction { Configure, Screensaver, Preview, Windowed }
 
 /// <summary>
 /// Parses the Windows screensaver protocol (/s, /c[:hwnd], /p hwnd) and the
-/// development options (--windowed, --size, --screenshot, --seed, --diag, --mode, --ui-scale).
+/// development options (--windowed, --size, --screenshot, --seed, --diag, --mode, --orientation, --ui-scale).
 /// </summary>
 internal sealed class CommandLine
 {
@@ -15,6 +15,7 @@ internal sealed class CommandLine
     public uint? Seed;
     public bool Diagnostics;
     public WallMode? Mode;
+    public ScrollOrientation? Orientation;
     public int UiScalePercent = 100;
 
     public const string Usage =
@@ -29,6 +30,7 @@ internal sealed class CommandLine
         "  --seed n           Fixed random seed for a reproducible scene.\n" +
         "  --diag             Show the diagnostics overlay.\n" +
         "  --mode perspective|flat  Override the wall mode for this run.\n" +
+        "  --orientation horizontal|vertical  Override the scroll orientation for this run.\n" +
         "  --ui-scale percent Emulate a display scale for the settings window (100, 125, 150).";
 
     public static CommandLine Parse(string[] args)
@@ -68,6 +70,15 @@ internal sealed class CommandLine
                             "perspective" => WallMode.Perspective,
                             "flat" => WallMode.Flat,
                             _ => throw new ArgumentException($"--mode expects perspective or flat, got \"{mode}\"."),
+                        };
+                        break;
+                    case "--orientation":
+                        string orientation = Next(args, ref i, arg).ToLowerInvariant();
+                        cl.Orientation = orientation switch
+                        {
+                            "horizontal" => ScrollOrientation.Horizontal,
+                            "vertical" => ScrollOrientation.Vertical,
+                            _ => throw new ArgumentException($"--orientation expects horizontal or vertical, got \"{orientation}\"."),
                         };
                         break;
                     case "--ui-scale":

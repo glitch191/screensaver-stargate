@@ -17,6 +17,7 @@ internal sealed class SettingsForm : Form
 
     readonly RadioButton _perspective = Radio("Perspective"), _flat = Radio("Flat");
     readonly RadioButton _toward = Radio("Toward viewer"), _away = Radio("Away from viewer");
+    readonly RadioButton _horizontal = Radio("Horizontal"), _vertical = Radio("Vertical");
     readonly RadioButton _soft = Radio("Soft"), _sharp = Radio("Sharp");
     readonly RadioButton _allScreens = Radio("All screens"), _primaryOnly = Radio("Primary screen only");
     readonly RadioButton _fpsAuto = Radio("Automatic"), _fpsCustom = Radio("Custom value"), _fpsUnlimited = Radio("Unlimited");
@@ -87,6 +88,7 @@ internal sealed class SettingsForm : Form
     {
         var grid = Grid();
         AddChoice(grid, "Wall mode", _perspective, _flat);
+        AddChoice(grid, "Orientation", _horizontal, _vertical);
         AddChoice(grid, "Direction", _toward, _away);
         (_speed, _speedValue) = AddSlider(grid, "Speed", 0, 100);
         (_density, _densityValue) = AddSlider(grid, "Line density", 0, 100);
@@ -95,8 +97,10 @@ internal sealed class SettingsForm : Form
         (_bloom, _bloomValue) = AddSlider(grid, "Bloom intensity", 0, 100);
         _tips.SetToolTip(_perspective, "Two walls of lines converging to a vanishing point at the center.");
         _tips.SetToolTip(_flat, "Parallel horizontal lines scrolling sideways, without perspective.");
-        _tips.SetToolTip(_toward, "Lines stream from the center toward the screen edges.");
-        _tips.SetToolTip(_away, "Lines stream from the screen edges toward the center.");
+        _tips.SetToolTip(_horizontal, "Walls on the left and right, light streaming sideways, vertical center line.");
+        _tips.SetToolTip(_vertical, "Walls above and below, light streaming up and down, horizontal center line.");
+        _tips.SetToolTip(_toward, "Light streams from the center line toward the screen edges.");
+        _tips.SetToolTip(_away, "Light streams from the screen edges toward the center line.");
         _tips.SetToolTip(_bloom, "Glow around the lines. 0 turns the glow off.");
         _tips.SetToolTip(_colorSpeed, "How fast the colors fade into new colors. 0 keeps the colors fixed along the lines.");
         return Group("Scene", grid);
@@ -408,6 +412,7 @@ internal sealed class SettingsForm : Form
         var s = _working;
         (s.WallMode == WallMode.Perspective ? _perspective : _flat).Checked = true;
         (s.Direction == ScrollDirection.TowardViewer ? _toward : _away).Checked = true;
+        (s.Orientation == ScrollOrientation.Horizontal ? _horizontal : _vertical).Checked = true;
         (s.CenterLineEdge == CenterLineEdge.Soft ? _soft : _sharp).Checked = true;
         (s.Screens == ScreenSelection.AllScreens ? _allScreens : _primaryOnly).Checked = true;
         (s.FrameRateLimit switch
@@ -442,6 +447,7 @@ internal sealed class SettingsForm : Form
         var s = _working;
         s.WallMode = _perspective.Checked ? WallMode.Perspective : WallMode.Flat;
         s.Direction = _toward.Checked ? ScrollDirection.TowardViewer : ScrollDirection.AwayFromViewer;
+        s.Orientation = _horizontal.Checked ? ScrollOrientation.Horizontal : ScrollOrientation.Vertical;
         s.CenterLineEdge = _soft.Checked ? CenterLineEdge.Soft : CenterLineEdge.Sharp;
         s.Screens = _allScreens.Checked ? ScreenSelection.AllScreens : ScreenSelection.PrimaryOnly;
         s.FrameRateLimit = _fpsCustom.Checked ? FrameRateLimit.Custom : _fpsUnlimited.Checked ? FrameRateLimit.Unlimited : FrameRateLimit.Automatic;

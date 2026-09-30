@@ -26,6 +26,8 @@ internal static class Program
         var settings = Settings.Load();
         if (cl.Mode.HasValue)
             settings.WallMode = cl.Mode.Value;
+        if (cl.Orientation.HasValue)
+            settings.Orientation = cl.Orientation.Value;
         uint seed = cl.Seed ?? (uint)(Environment.TickCount64 ^ ((long)Environment.ProcessId << 16));
 
         return cl.Action switch
