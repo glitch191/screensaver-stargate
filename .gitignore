@@ -16,3 +16,7 @@ TestResults/
 
 # Local verification output
 screenshots/raw/
+
+# Local notes for Claude Code, kept out of the repository
+CLAUDE.md
+HANDOFF.md
