@@ -28,6 +28,9 @@ internal sealed class RenderLoopOptions
 /// </summary>
 internal sealed class RenderLoop : IDisposable
 {
+    /// <summary>Wrap for the film effect time, short enough to keep float precision.</summary>
+    const double FilmTimePeriod = 4096.0;
+
     readonly IntPtr _hwnd;
     readonly RenderLoopOptions _options;
     readonly Thread _thread;
@@ -101,6 +104,8 @@ internal sealed class RenderLoop : IDisposable
             long freq = Stopwatch.Frequency;
             long last = Stopwatch.GetTimestamp();
             long deadline = last;
+            long started = last;
+            long frames = 0;
 
             while (!_stop)
             {
@@ -131,6 +136,7 @@ internal sealed class RenderLoop : IDisposable
                 var p = FrameParams.From(s, rc.Width, rc.Height, _options.Seed);
                 p.Scroll = (float)sim.InterpolatedScroll(alpha);
                 p.ColorPhase = (float)sim.InterpolatedColor(alpha);
+                p.Time = (float)(sim.InterpolatedTime(alpha) % FilmTimePeriod);
                 p.Diagnostics |= _options.ForceDiagnostics;
 
                 if (p.Diagnostics && elapsed > 0 &&
@@ -139,6 +145,7 @@ internal sealed class RenderLoop : IDisposable
 
                 renderer.Render(p, offscreen: false);
                 ctx.SwapBuffers();
+                frames++;
 
                 double cap = s.FrameRateLimit switch
                 {
@@ -151,6 +158,10 @@ internal sealed class RenderLoop : IDisposable
                 else
                     deadline = Stopwatch.GetTimestamp();
             }
+            double seconds = (double)(Stopwatch.GetTimestamp() - started) / freq;
+            Log.Write($"Render loop ended: {frames} frames in {seconds:F1} s ({frames / Math.Max(seconds, 1e-6):F1} FPS average).");
+            if (diag.AverageMs > 0)
+                Log.Write($"Diagnostics, last 2 s: refresh {refresh} Hz, frame average {diag.AverageMs:F2} ms, worst 1% {diag.Worst1PercentMs:F2} ms.");
         }
         catch (Exception ex)
         {
@@ -195,6 +206,7 @@ internal sealed class RenderLoop : IDisposable
         var p = FrameParams.From(s, size.Width, size.Height, _options.Seed);
         p.Scroll = (float)sim.InterpolatedScroll(1.0);
         p.ColorPhase = (float)sim.InterpolatedColor(1.0);
+        p.Time = (float)(sim.InterpolatedTime(1.0) % FilmTimePeriod);
         // A single offscreen frame has no meaningful frame timing, so no overlay.
         p.Diagnostics = false;
 

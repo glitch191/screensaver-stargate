@@ -24,7 +24,7 @@ public sealed class Settings
     public int LineDensity { get; set; } = 50;
     public int LineThickness { get; set; } = 40;
     public int ColorChangeSpeed { get; set; } = 40;
-    public int BloomIntensity { get; set; } = 30;
+    public int BloomIntensity { get; set; } = 35;
     /// <summary>Center line width in pixels at 1080 pixels of screen height.</summary>
     public int CenterLineWidth { get; set; } = 6;
     public CenterLineEdge CenterLineEdge { get; set; } = CenterLineEdge.Soft;

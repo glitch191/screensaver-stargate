@@ -26,6 +26,81 @@ internal static unsafe partial class Native
 
     public const int ENUM_CURRENT_SETTINGS = -1;
 
+    public const int WM_INPUT = 0x00FF;
+    public const uint RIDEV_INPUTSINK = 0x00000100;
+    public const uint RID_INPUT = 0x10000003;
+    public const uint RIM_TYPEKEYBOARD = 1;
+    public const uint RIM_TYPEMOUSE = 0;
+    public const ushort RI_MOUSE_BUTTON_DOWN_MASK = 0x0001 | 0x0004 | 0x0010 | 0x0040 | 0x0100; // left, right, middle, x1, x2
+    public const ushort RI_MOUSE_WHEEL = 0x0400;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RAWINPUTDEVICE
+    {
+        public ushort UsagePage;
+        public ushort Usage;
+        public uint Flags;
+        public IntPtr Target;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RAWINPUTHEADER
+    {
+        public uint Type;
+        public uint Size;
+        public IntPtr Device;
+        public IntPtr WParam;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool RegisterRawInputDevices(RAWINPUTDEVICE[] devices, uint count, uint size);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetRawInputData(IntPtr rawInput, uint command, byte* data, ref uint size, uint headerSize);
+
+    /// <summary>
+    /// Registers keyboard and mouse raw input for a window, delivered even when it is not in the
+    /// foreground, so the screensaver closes on any key or click whatever window has the focus.
+    /// </summary>
+    public static bool RegisterInputSink(IntPtr hwnd)
+    {
+        var devices = new[]
+        {
+            new RAWINPUTDEVICE { UsagePage = 0x01, Usage = 0x06, Flags = RIDEV_INPUTSINK, Target = hwnd }, // keyboard
+            new RAWINPUTDEVICE { UsagePage = 0x01, Usage = 0x02, Flags = RIDEV_INPUTSINK, Target = hwnd }, // mouse
+        };
+        return RegisterRawInputDevices(devices, (uint)devices.Length, (uint)sizeof(RAWINPUTDEVICE));
+    }
+
+    /// <summary>True when a WM_INPUT message is a key press, a mouse button press or a wheel turn.</summary>
+    public static bool IsRawKeyOrButton(IntPtr lParam, out string description)
+    {
+        description = "";
+        uint headerSize = (uint)sizeof(RAWINPUTHEADER);
+        byte* buffer = stackalloc byte[64];
+        uint size = 64;
+        if (GetRawInputData(lParam, RID_INPUT, buffer, ref size, headerSize) == unchecked((uint)-1))
+            return false;
+        var header = (RAWINPUTHEADER*)buffer;
+        if (header->Type == RIM_TYPEKEYBOARD)
+        {
+            // RAWKEYBOARD.Flags bit 0 is RI_KEY_BREAK (key release).
+            ushort flags = *(ushort*)(buffer + headerSize + 2);
+            ushort vkey = *(ushort*)(buffer + headerSize + 6);
+            description = $"raw key 0x{vkey:X2}";
+            return (flags & 1) == 0;
+        }
+        if (header->Type == RIM_TYPEMOUSE)
+        {
+            // RAWMOUSE: usFlags (2 bytes), padding (2), then usButtonFlags.
+            ushort buttons = *(ushort*)(buffer + headerSize + 4);
+            description = $"raw mouse buttons 0x{buttons:X4}";
+            return (buttons & (RI_MOUSE_BUTTON_DOWN_MASK | RI_MOUSE_WHEEL)) != 0;
+        }
+        return false;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
     {
@@ -106,6 +181,12 @@ internal static unsafe partial class Native
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    public const uint PW_RENDERFULLCONTENT = 0x00000002;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -69,6 +69,8 @@ internal sealed class SceneForm : Form
         base.OnHandleCreated(e);
         if (_screen != null)
             ApplyScreenBounds();
+        if (_screensaver && !Native.RegisterInputSink(Handle))
+            Log.Write("Raw input registration failed; keys only close the screensaver while it has the focus.");
         if (!_render)
             return;
 
@@ -132,13 +134,13 @@ internal sealed class SceneForm : Form
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (_screensaver) Application.Exit();
+        if (_screensaver) Exit($"key {e.KeyCode}");
     }
 
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
-        if (_screensaver) Application.Exit();
+        if (_screensaver) Exit($"mouse button {e.Button}");
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
@@ -150,13 +152,17 @@ internal sealed class SceneForm : Form
         _mouseOrigin ??= pos;
         int threshold = MouseThreshold * DeviceDpi / 96;
         if (Math.Abs(pos.X - _mouseOrigin.Value.X) > threshold || Math.Abs(pos.Y - _mouseOrigin.Value.Y) > threshold)
-            Application.Exit();
+            Exit($"mouse moved from {_mouseOrigin.Value} to {pos}");
     }
 
     protected override void WndProc(ref Message m)
     {
         switch (m.Msg)
         {
+            case Native.WM_INPUT when _screensaver:
+                if (Native.IsRawKeyOrButton(m.LParam, out string input))
+                    Exit(input);
+                break;
             case Native.WM_SYSCOMMAND when _screensaver:
                 int cmd = (int)m.WParam & 0xFFF0;
                 if (cmd == Native.SC_SCREENSAVE) { m.Result = IntPtr.Zero; return; }
@@ -172,6 +178,16 @@ internal sealed class SceneForm : Form
                 return;
         }
         base.WndProc(ref m);
+    }
+
+    static bool _exiting;
+
+    static void Exit(string reason)
+    {
+        if (_exiting) return;
+        _exiting = true;
+        Log.Write($"Screensaver closed by input: {reason}.");
+        Application.Exit();
     }
 
     /// <summary>Sets the mouse origin used by the movement threshold.</summary>

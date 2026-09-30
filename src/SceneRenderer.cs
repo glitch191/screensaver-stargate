@@ -9,6 +9,8 @@ internal struct FrameParams
     public int Width, Height;
     public WallMode Mode;
     public float Scroll, ColorPhase;
+    /// <summary>Seconds of simulated time, wrapped, for grain, gate weave and flicker.</summary>
+    public float Time;
     public float Density, Thickness;
     public uint Seed;
     public float BloomStrength;
@@ -27,7 +29,7 @@ internal struct FrameParams
             Seed = seed,
             Density = s.WallMode == WallMode.Perspective ? 6f + 34f * density : 5f + 35f * density,
             Thickness = 0.08f + 0.77f * (s.LineThickness / 100f),
-            BloomStrength = s.BloomIntensity / 100f * 1.2f,
+            BloomStrength = s.BloomIntensity / 100f * 1.6f,
             // Width is defined at 1080 pixels of height and scales with the real height.
             LineHalfWidth = Math.Max(0.5f, s.CenterLineWidth * height / 1080f * 0.5f),
             LineSoft = s.CenterLineEdge == CenterLineEdge.Soft,
@@ -45,7 +47,7 @@ internal sealed class SceneRenderer : IDisposable
     public const int TextCols = 44;
     public const int TextRows = 4;
     const int MaxBloomLevels = 6;
-    const float BloomThreshold = 0.45f;
+    const float BloomThreshold = 0.3f;
     const float BloomSpread = 0.6f;
 
     readonly int _vao;
@@ -64,7 +66,7 @@ internal sealed class SceneRenderer : IDisposable
     readonly int _sRes, _sMode, _sScroll, _sColor, _sDensity, _sThickness, _sSeed;
     readonly int _dSrc, _dHalf, _dPrefilter, _dThreshold;
     readonly int _uSrc, _uAdd, _uHalf, _uSpread;
-    readonly int _cScene, _cBloom, _cFont, _cRes, _cBloomStrength, _cLineHalf, _cLineSoft, _cDiag, _cTextScale, _cText;
+    readonly int _cScene, _cBloom, _cFont, _cRes, _cBloomStrength, _cLineHalf, _cLineSoft, _cDiag, _cTextScale, _cText, _cTime, _cFilmScale;
 
     public SceneRenderer()
     {
@@ -102,6 +104,8 @@ internal sealed class SceneRenderer : IDisposable
         _cDiag = GL.GetUniformLocation(_compProg, "uDiag");
         _cTextScale = GL.GetUniformLocation(_compProg, "uTextScale");
         _cText = GL.GetUniformLocation(_compProg, "uText");
+        _cTime = GL.GetUniformLocation(_compProg, "uTime");
+        _cFilmScale = GL.GetUniformLocation(_compProg, "uFilmScale");
 
         _vao = GL.GenVertexArray();
 
@@ -215,6 +219,8 @@ internal sealed class SceneRenderer : IDisposable
         GL.Uniform1(_cLineSoft, p.LineSoft ? 1 : 0);
         GL.Uniform1(_cDiag, p.Diagnostics ? 1 : 0);
         GL.Uniform1(_cTextScale, (float)Math.Max(1, _height / 540));
+        GL.Uniform1(_cTime, p.Time);
+        GL.Uniform1(_cFilmScale, Math.Max(0.5f, _height / 1080f));
         GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
         GL.ActiveTexture(TextureUnit.Texture0);
     }

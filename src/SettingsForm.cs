@@ -115,18 +115,12 @@ internal sealed class SettingsForm : Form
     {
         _preview.Size = new Size(448, 252);
         _preview.MinimumSize = _preview.Size;
-        _preview.Margin = new Padding(6);
-        _preview.Dock = DockStyle.Fill;
-        var box = new GroupBox
-        {
-            Text = "Preview",
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Dock = DockStyle.Fill,
-            Padding = new Padding(6),
-        };
-        box.Controls.Add(_preview);
-        return box;
+        _preview.Margin = new Padding(4);
+        _preview.Anchor = AnchorStyles.None;
+        var grid = Grid();
+        grid.ColumnCount = 1;
+        grid.Controls.Add(_preview, 0, 0);
+        return Group("Preview", grid);
     }
 
     GroupBox BuildDisplayGroup()
@@ -218,7 +212,7 @@ internal sealed class SettingsForm : Form
             Text = title,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
             Padding = new Padding(8, 6, 8, 6),
             Margin = new Padding(4),
         };
@@ -255,6 +249,7 @@ internal sealed class SettingsForm : Form
         Text = text,
         AutoSize = true,
         Anchor = AnchorStyles.Left,
+        MinimumSize = new Size(140, 0),
         Margin = new Padding(3, 3, 12, 3),
     };
 
@@ -380,6 +375,7 @@ internal sealed class SettingsForm : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        _customFps.SelectionLength = 0;
         if (_screenshotPath != null)
         {
             var timer = new System.Windows.Forms.Timer { Interval = 2500 };
@@ -507,10 +503,15 @@ internal sealed class SettingsForm : Form
     {
         try
         {
+            // PrintWindow captures only this window, even when something covers it.
             var bounds = Bounds;
             using var bmp = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(bmp))
-                g.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
+            {
+                IntPtr hdc = g.GetHdc();
+                Native.PrintWindow(Handle, hdc, Native.PW_RENDERFULLCONTENT);
+                g.ReleaseHdc(hdc);
+            }
             string full = Path.GetFullPath(path);
             Directory.CreateDirectory(Path.GetDirectoryName(full)!);
             bmp.Save(full, ImageFormat.Png);

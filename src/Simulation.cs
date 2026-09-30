@@ -74,6 +74,9 @@ public sealed class Simulation
 
     long _scrollWraps, _colorWraps;
 
+    /// <summary>Simulated time matching the interpolated state, used by the film effects.</summary>
+    public double InterpolatedTime(double alpha) => Math.Max(0.0, Time - Step * (1.0 - alpha));
+
     public double InterpolatedScroll(double alpha) => _prevScroll + (_scroll - _prevScroll) * alpha;
 
     public double InterpolatedColor(double alpha) => _prevColor + (_color - _prevColor) * alpha;
@@ -88,7 +91,7 @@ public sealed class Simulation
     public void ApplySettings(Settings s)
     {
         double speed = s.Speed / 50.0; // 1.0 at the default
-        double keysPerSecond = s.WallMode == WallMode.Perspective ? 1.6 : 0.9;
+        double keysPerSecond = s.WallMode == WallMode.Perspective ? 1.4 : 1.0;
         double dir = s.Direction == ScrollDirection.TowardViewer ? 1.0 : -1.0;
         ScrollRate = speed * keysPerSecond * dir;
         ColorRate = s.ColorChangeSpeed / 40.0 * 0.25;
