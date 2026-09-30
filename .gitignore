@@ -1,0 +1,18 @@
+# .NET build output
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+publish/
+dist/
+*.user
+*.suo
+*.userprefs
+.vs/
+.vscode/
+*.swp
+*.log
+TestResults/
+
+# Local verification output
+screenshots/raw/
