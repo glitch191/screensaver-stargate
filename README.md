@@ -1,6 +1,6 @@
 # Screensaver Stargate
 
-A native Windows screensaver inspired by the Star Gate sequence at the end of *2001: A Space Odyssey*: two walls of neon light streaming out of a bright seam in the middle of the screen, split by a thin black line. The walls stand left and right (horizontal scrolling, vertical center line) or above and below (vertical scrolling, horizontal center line). Everything is drawn in real time by OpenGL shaders, with a film treatment (grain, gate weave, halation, softness, dust) so the picture feels like projected film rather than clean vector graphics.
+A native Windows screensaver inspired by the Star Gate sequence at the end of *2001: A Space Odyssey*: two walls of neon light streaming out of a bright seam in the middle of the screen, split by a thin black line. The walls stand left and right (horizontal scrolling, vertical center line) or above and below (vertical scrolling, horizontal center line). Everything is drawn in real time by OpenGL shaders, with a film treatment (grain, gate weave, halation, softness) so the picture feels like projected film rather than clean vector graphics.
 
 ![Perspective mode, horizontal orientation, rendered at 1920 x 1080 by the current version](docs/screenshots/hero-perspective-1920x1080.jpg)
 
@@ -104,7 +104,7 @@ Scripts in `tools\`:
 
 - **Rendering**: one fullscreen triangle per pass. The scene shader computes, for every pixel, where it lands on the walls (in perspective, depth = 1 / distance from the center) and evaluates procedural patterns there: continuous lines with light streaks, grids of dots, slanted hatching, rows of bars and columns of short bars, in large color fields. Colors use OKLCH at constant lightness and chroma, so fades between colors never go through grey. Lines are box filtered by their pixel footprint, which keeps the dense area near the vanishing point smooth and lets it pile up into a bright seam, as in the film.
 - **Bloom**: bright pass and dual Kawase blur over up to six half-resolution levels (R11G11B10 float), added back with a warm halation component.
-- **Film treatment**: gate weave (about one pixel of drift), slight lens softness and chromatic aberration, lamp flicker, luminance grain and occasional dust specks, all changing at 24 film frames per second and sized relative to the screen height.
+- **Film treatment**: gate weave (about one pixel of drift), slight lens softness and chromatic aberration, lamp flicker and luminance grain (no random dust or specks), all changing at 24 film frames per second and sized relative to the screen height.
 - **Center line**: drawn last, over the walls, the glow and the film effects, from the exact window center, with width proportional to the height.
 - **Orientation**: the vertical orientation swaps the two screen axes in the scene shader and draws the center line horizontally; everything else is shared.
 - **Aspect ratio**: all coordinates are normalized by the window height, so a 21:9 screen shows a wider field (more of each wall) instead of a stretched picture.

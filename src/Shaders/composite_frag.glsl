@@ -1,6 +1,6 @@
 #version 330 core
 // Final image: scene + bloom with film treatment (gate weave, slight lens
-// softness and chromatic aberration, red halation, flicker, grain, dust),
+// softness and chromatic aberration, red halation, flicker, grain),
 // hue preserving tone curve, then the black center line and the optional
 // diagnostics text. The center line and the text are not affected by the film
 // effects, so the line stays pure black and exactly centered.
@@ -23,7 +23,7 @@ const int TEXT_COLS = 44;
 const int TEXT_ROWS = 4;
 uniform int uText[TEXT_COLS * TEXT_ROWS];
 
-const float FILM_FPS = 24.0;        // grain, dust and flicker change at the film frame rate
+const float FILM_FPS = 24.0;        // grain and flicker change at the film frame rate
 const float GRAIN = 0.10;           // grain strength in display values
 const float GRAIN_SIZE = 1.35;      // grain cell size in pixels at 1080p
 const float WEAVE_PX = 1.1;         // gate weave amplitude in pixels at 1080p
@@ -120,19 +120,6 @@ void main()
     float lum = dot(outc, vec3(0.2126, 0.7152, 0.0722));
     float amp = GRAIN * (0.35 + 0.65 * sqrt(lum)) * (1.0 - 0.5 * lum * lum);
     outc += (vec3(g) + gc * 0.35) * amp;
-
-    // Dust: a few soft specks on some film frames, dark (dirt) or light (scratched emulsion).
-    float cellSize = 40.0 * uFilmScale;
-    vec2 cell = floor(gl_FragCoord.xy / cellSize);
-    uvec2 uc = uvec2(ivec2(cell) + 65536);
-    if (rand3(uc.x, uc.y, frame) < 0.0012)
-    {
-        vec2 center = (cell + vec2(rand3(uc.x, uc.y, frame + 7u), rand3(uc.y, uc.x, frame + 9u))) * cellSize;
-        float radius = (0.8 + 2.2 * rand3(uc.x, frame, uc.y)) * uFilmScale;
-        float speck = 1.0 - smoothstep(radius * 0.4, radius, length(gl_FragCoord.xy - center));
-        vec3 tone = rand3(uc.y, frame, uc.x) < 0.7 ? vec3(0.0) : vec3(0.85, 0.8, 0.7);
-        outc = mix(outc, tone, speck * 0.7);
-    }
 
     // Center line coverage, over everything above, applied in display values
     // so the perceived width matches the setting.
