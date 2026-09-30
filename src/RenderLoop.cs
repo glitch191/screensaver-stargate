@@ -155,6 +155,11 @@ internal sealed class RenderLoop : IDisposable
                     FrameRateLimit.Automatic when !s.VerticalSync => refresh,
                     _ => 0,
                 };
+                // Safety net: if vertical sync stops blocking (for example while the displays
+                // sleep), do not spin at thousands of frames per second. Inactive otherwise,
+                // because synchronized frames are already slower than this cap.
+                if (cap == 0 && s.VerticalSync && refresh > 0)
+                    cap = refresh * 1.25;
                 if (cap > 0)
                     WaitForDeadline(ref deadline, (long)(freq / cap), timer);
                 else
