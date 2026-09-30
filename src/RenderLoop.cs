@@ -121,8 +121,10 @@ internal sealed class RenderLoop : IDisposable
                 int interval = s.VerticalSync ? 1 : 0;
                 if (interval != swapInterval)
                 {
-                    ctx.SetSwapInterval(interval);
+                    int applied = ctx.SetSwapInterval(interval);
                     swapInterval = interval;
+                    if (applied != interval)
+                        Log.Write($"Swap interval {interval} requested, driver reports {applied}.");
                 }
 
                 long now = Stopwatch.GetTimestamp();

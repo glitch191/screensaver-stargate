@@ -26,6 +26,7 @@ internal sealed unsafe class GlContext : IDisposable
     IntPtr _hdc;
     IntPtr _hglrc;
     delegate* unmanaged<int, int> _swapInterval;
+    delegate* unmanaged<int> _getSwapInterval;
 
     public GlContext(IntPtr hwnd)
     {
@@ -83,6 +84,7 @@ internal sealed unsafe class GlContext : IDisposable
             throw new InvalidOperationException("wglMakeCurrent failed for the OpenGL 3.3 context.");
 
         _swapInterval = (delegate* unmanaged<int, int>)Native.wglGetProcAddress("wglSwapIntervalEXT");
+        _getSwapInterval = (delegate* unmanaged<int>)Native.wglGetProcAddress("wglGetSwapIntervalEXT");
 
         lock (BindingsLock)
         {
@@ -96,10 +98,12 @@ internal sealed unsafe class GlContext : IDisposable
 
     public string Renderer => GL.GetString(StringName.Renderer) ?? "unknown";
 
-    public void SetSwapInterval(int interval)
+    /// <summary>Sets the swap interval and returns the interval the driver reports afterwards (-1 if unknown).</summary>
+    public int SetSwapInterval(int interval)
     {
         if (_swapInterval != null)
             _swapInterval(interval);
+        return _getSwapInterval != null ? _getSwapInterval() : -1;
     }
 
     public void SwapBuffers() => Native.SwapBuffers(_hdc);
