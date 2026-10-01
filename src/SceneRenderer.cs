@@ -18,6 +18,8 @@ internal struct FrameParams
     public float LineHalfWidth;
     public bool LineSoft;
     public bool Diagnostics;
+    /// <summary>Film effect multipliers: 1 is the reference look, 0 is off.</summary>
+    public float Grain, Weave, Lens, Halation, Flicker;
 
     public static FrameParams From(Settings s, int width, int height, uint seed)
     {
@@ -36,6 +38,11 @@ internal struct FrameParams
             LineHalfWidth = Math.Max(0.5f, s.CenterLineWidth * height / 1080f * 0.5f),
             LineSoft = s.CenterLineEdge == CenterLineEdge.Soft,
             Diagnostics = s.ShowDiagnostics,
+            Grain = s.FilmGrain / 50f,
+            Weave = s.FilmGateWeave / 50f,
+            Lens = s.FilmLensSoftness / 50f,
+            Halation = s.FilmHalation / 50f,
+            Flicker = s.FilmFlicker / 50f,
         };
     }
 }
@@ -69,6 +76,7 @@ internal sealed class SceneRenderer : IDisposable
     readonly int _dSrc, _dHalf, _dPrefilter, _dThreshold;
     readonly int _uSrc, _uAdd, _uHalf, _uSpread;
     readonly int _cScene, _cBloom, _cFont, _cRes, _cBloomStrength, _cLineHalf, _cLineSoft, _cDiag, _cTextScale, _cText, _cTime, _cFilmScale, _cVertical;
+    readonly int _cGrain, _cWeave, _cLens, _cHalation, _cFlicker;
 
     public SceneRenderer()
     {
@@ -110,6 +118,11 @@ internal sealed class SceneRenderer : IDisposable
         _cTime = GL.GetUniformLocation(_compProg, "uTime");
         _cFilmScale = GL.GetUniformLocation(_compProg, "uFilmScale");
         _cVertical = GL.GetUniformLocation(_compProg, "uVertical");
+        _cGrain = GL.GetUniformLocation(_compProg, "uGrain");
+        _cWeave = GL.GetUniformLocation(_compProg, "uWeave");
+        _cLens = GL.GetUniformLocation(_compProg, "uLens");
+        _cHalation = GL.GetUniformLocation(_compProg, "uHalation");
+        _cFlicker = GL.GetUniformLocation(_compProg, "uFlicker");
 
         _vao = GL.GenVertexArray();
 
@@ -227,6 +240,11 @@ internal sealed class SceneRenderer : IDisposable
         GL.Uniform1(_cTime, p.Time);
         GL.Uniform1(_cFilmScale, Math.Max(0.5f, _height / 1080f));
         GL.Uniform1(_cVertical, p.Vertical ? 1 : 0);
+        GL.Uniform1(_cGrain, p.Grain);
+        GL.Uniform1(_cWeave, p.Weave);
+        GL.Uniform1(_cLens, p.Lens);
+        GL.Uniform1(_cHalation, p.Halation);
+        GL.Uniform1(_cFlicker, p.Flicker);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
         GL.ActiveTexture(TextureUnit.Texture0);
     }

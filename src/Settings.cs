@@ -26,6 +26,12 @@ public sealed class Settings
     public int LineThickness { get; set; } = 40;
     public int ColorChangeSpeed { get; set; } = 40;
     public int BloomIntensity { get; set; } = 35;
+    // Film treatment strengths: 50 is the reference look, 0 turns the effect off, 100 doubles it.
+    public int FilmGrain { get; set; } = 50;
+    public int FilmGateWeave { get; set; } = 50;
+    public int FilmLensSoftness { get; set; } = 50;
+    public int FilmHalation { get; set; } = 50;
+    public int FilmFlicker { get; set; } = 50;
     /// <summary>Center line width in pixels at 1080 pixels of screen height.</summary>
     public int CenterLineWidth { get; set; } = 6;
     public CenterLineEdge CenterLineEdge { get; set; } = CenterLineEdge.Soft;
@@ -97,6 +103,11 @@ public sealed class Settings
         LineThickness = Math.Clamp(LineThickness, SliderMin, SliderMax);
         ColorChangeSpeed = Math.Clamp(ColorChangeSpeed, SliderMin, SliderMax);
         BloomIntensity = Math.Clamp(BloomIntensity, SliderMin, SliderMax);
+        FilmGrain = Math.Clamp(FilmGrain, SliderMin, SliderMax);
+        FilmGateWeave = Math.Clamp(FilmGateWeave, SliderMin, SliderMax);
+        FilmLensSoftness = Math.Clamp(FilmLensSoftness, SliderMin, SliderMax);
+        FilmHalation = Math.Clamp(FilmHalation, SliderMin, SliderMax);
+        FilmFlicker = Math.Clamp(FilmFlicker, SliderMin, SliderMax);
         CenterLineWidth = Math.Clamp(CenterLineWidth, CenterLineMin, CenterLineMax);
         CustomFrameRate = Math.Clamp(CustomFrameRate, CustomFpsMin, CustomFpsMax);
         if (!Enum.IsDefined(WallMode)) WallMode = WallMode.Perspective;

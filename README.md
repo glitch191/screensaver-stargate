@@ -28,6 +28,15 @@ This runs the timing checks, publishes a self-contained single-file executable a
 
 Size of `dist\ScreensaverStargate.scr`: **48.0 MB** (self-contained .NET 10 runtime and WinForms, compressed; no installation of .NET is needed on the target machine).
 
+### Release build on GitHub
+
+`.github/workflows/release.yml` runs `build.ps1` on a GitHub Windows runner (timing checks included) and attaches `ScreensaverStargate.scr` to a release:
+
+- **Publishing a release** builds the tag of that release and attaches the file.
+- **Run workflow** (Actions tab, "Release build") builds an existing tag. If the release already has the file, the upload stops with a message unless **replace** is checked.
+
+Each run also keeps the file as a workflow artifact and writes its size and SHA-256 in the run summary. A CI build is not byte-identical to a local build, so its SHA-256 differs from that of a file built locally.
+
 ## Install
 
 - Right-click `dist\ScreensaverStargate.scr` and choose **Install**. Windows opens the screen saver settings with it selected.
@@ -39,7 +48,7 @@ To uninstall, choose another screen saver and delete the `.scr` file and `%APPDA
 
 ## Settings
 
-Open them from the Windows screen saver dialog (**Settings...**), by right-clicking the `.scr` file and choosing **Configure**, or by running it without arguments. The window shows a live preview; every change is visible immediately and saved with **OK**.
+Open them from the Windows screen saver dialog (**Settings...**), by right-clicking the `.scr` file and choosing **Configure**, or by running it without arguments. The window shows a live preview; every change is visible immediately and saved with **OK**. The settings are on two tabs, **Scene** and **Film**, next to the preview and the display options.
 
 | Setting | Effect |
 | --- | --- |
@@ -53,11 +62,18 @@ Open them from the Windows screen saver dialog (**Settings...**), by right-click
 | Bloom intensity | Glow around the lights, from 0 (off) to strong. The default is moderate. |
 | Center line width | Width of the black center line in pixels on a 1080-pixel-high screen; it scales with the screen height. |
 | Center line edge | **Soft** or **Sharp** edges. |
+| Grain | Film grain, renewed 24 times per second. |
+| Gate weave | Slight drift of the whole picture, like film moving in a projector gate. |
+| Lens softness | Lens blur and red and blue color fringes toward the screen edges. |
+| Halation | Warm red halo around bright lights (needs a bloom intensity above 0). |
+| Flicker | Brightness variation of the projection lamp. |
 | Screens | **All screens**, or **Primary screen only** (other screens stay black). |
 | Frame rate limit | **Automatic** (the refresh rate of each screen), **Custom value** (20 to 1000), or **Unlimited**. |
 | Vertical sync | Synchronizes each frame with the refresh of its screen. Recommended. |
 | Show diagnostics | Small overlay with the detected refresh rate, the average frame time and the worst 1% of frame times. |
 | Reset to defaults | Restores every setting (saved only with OK). |
+
+The five film settings range from 0 (effect off) to 100 (twice the reference strength); the default, 50, is the reference look. Setting all five to 0 gives a clean digital picture.
 
 A missing or damaged `settings.json` is ignored and the defaults are used; the reason is written to `log.txt`.
 
@@ -96,7 +112,7 @@ Scripts in `tools\`:
 - `capture-window.ps1`: captures the program's own window (never the rest of the desktop).
 - `test-screensaver.ps1`: `/s` checks (single instance, key, click, mouse threshold). Covers the screen for a few seconds per step.
 - `test-preview.ps1`: `/p` check with a test parent window.
-- `test-settings.ps1`: damaged settings file, invalid values and frame rate options. Backs up and restores `settings.json`.
+- `test-settings.ps1`: damaged settings file, invalid values (film values included) and frame rate options. Backs up and restores `settings.json`.
 - `test-settings-ui.ps1`: drives the settings window with UI Automation (selects options, checks that the preview changes, OK, reopens, checks that they were saved and loaded).
 - `memory-test.ps1`: long run with memory samples every minute.
 
@@ -121,7 +137,8 @@ Measured on this development machine: Windows 11, one 3440x1440 screen at 360 Hz
 - **CPU**: one render thread uses about 41% of one core at 360 FPS (the driver waits actively on each swap), 24% at 144 FPS and 6% at 60 FPS. Use a custom frame rate to save power.
 - **Memory**: see the table below.
 - **Screenshots**: both modes and both orientations at 1920x1080, 2560x1440, 2560x1080 and 3440x1440 are in `docs\screenshots`. Center line measured with `measure-center-line.ps1`: in the horizontal orientation, centered within 0.15 pixel at every size, width 6.3 px at 1080 and 8.3 px at 1440 for a 6 px setting (targets 6 and 8; the small excess comes from the soft edge and the glow gradient), Sharp edge within 0.12 pixel. In the vertical orientation, flat mode is centered within 0.26 pixel with the same widths; in perspective the measurement reads 0.4 to 0.6 pixel off, which is the bias of the method on the steep and asymmetric glow of the horizon (the line itself is computed at exactly half the height).
-- **Settings window**: checked at 100%, 125% and 150% with `--ui-scale` (no truncation or overlap). The real Windows scaling was not changed during development; please confirm on a screen set to 125% or 150%.
+- **Film settings**: at the default of 50 the rendered frame is byte-identical to version 1.0.0 (same seed, same simulated time); 0 removes each effect and 100 doubles it.
+- **Settings window**: checked at 100%, 125% and 150% with `--ui-scale` (no truncation or overlap; 1524 x 907 pixels at 150%, so it fits a 1080p screen at that scale). The real Windows scaling was not changed during development; please confirm on a screen set to 125% or 150%.
 - **Protocol**: `/s` (single instance, key, click, mouse threshold with a 3 px move ignored), `/p` in a test parent window (child created, exits when the parent closes), `/c` and no argument.
 - **Settings persistence**: `test-settings-ui.ps1` selects Flat and Vertical, sees the preview change, clicks OK, and finds both saved in `settings.json` and selected again when the window reopens.
 - **Not verified here**: several physical screens (only one was available; the code creates one window, seed, context and render thread per screen), a real 125% or 150% Windows scale, and an integrated GPU at 3440x1440.
@@ -150,6 +167,7 @@ After the start-up settles (minute 3), private memory stays between 150.7 and 15
 ScreensaverStargate.csproj   Project (net10.0-windows, WinForms, OpenTK.Graphics 4.9.4 for GL bindings)
 app.manifest                 Windows 10/11 compatibility, asInvoker
 build.ps1                    Build and produce dist\ScreensaverStargate.scr
+.github\workflowselease.yml GitHub Actions build that attaches the .scr to a release
 src\Program.cs               Entry point, screensaver modes
 src\CommandLine.cs           /s /c /p and development options
 src\Settings.cs              Settings, JSON load and save with validation

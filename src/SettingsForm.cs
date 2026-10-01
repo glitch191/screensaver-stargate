@@ -24,10 +24,13 @@ internal sealed class SettingsForm : Form
     readonly CheckBox _vsync = Check("Vertical sync"), _diag = Check("Show diagnostics");
     readonly ComboBox _customFps = new();
     readonly GlPanel _preview = new();
+    readonly TabControl _tabs = new() { Margin = new Padding(4), Padding = new Point(12, 4) };
     readonly Button _reset = CreateButton("Reset to defaults"), _ok = CreateButton("OK"), _cancel = CreateButton("Cancel");
 
     TrackBar _speed = null!, _density = null!, _thickness = null!, _colorSpeed = null!, _bloom = null!, _lineWidth = null!;
     Label _speedValue = null!, _densityValue = null!, _thicknessValue = null!, _colorSpeedValue = null!, _bloomValue = null!, _lineWidthValue = null!;
+    TrackBar _grain = null!, _weave = null!, _lens = null!, _halation = null!, _flicker = null!;
+    Label _grainValue = null!, _weaveValue = null!, _lensValue = null!, _halationValue = null!, _flickerValue = null!;
 
     public SettingsForm(Settings settings, int uiScalePercent, string? screenshotPath)
     {
@@ -62,7 +65,10 @@ internal sealed class SettingsForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        root.Controls.Add(Column(BuildSceneGroup(), BuildCenterLineGroup()), 0, 0);
+        // Two tabs keep the window short enough for a 1080p screen at 150%; the preview stays visible.
+        AddTab("Scene", Column(BuildSceneGroup(), BuildCenterLineGroup()));
+        AddTab("Film", Column(BuildFilmGroup()));
+        root.Controls.Add(_tabs, 0, 0);
         root.Controls.Add(Column(BuildPreviewGroup(), BuildDisplayGroup()), 1, 0);
         var buttons = BuildButtonBar();
         root.Controls.Add(buttons, 0, 1);
@@ -103,7 +109,7 @@ internal sealed class SettingsForm : Form
         _tips.SetToolTip(_away, "Light streams from the screen edges toward the center line.");
         _tips.SetToolTip(_bloom, "Glow around the lines. 0 turns the glow off.");
         _tips.SetToolTip(_colorSpeed, "How fast the colors fade into new colors. 0 keeps the colors fixed along the lines.");
-        return Group("Scene", grid);
+        return Group("Walls", grid);
     }
 
     GroupBox BuildCenterLineGroup()
@@ -125,6 +131,23 @@ internal sealed class SettingsForm : Form
         grid.ColumnCount = 1;
         grid.Controls.Add(_preview, 0, 0);
         return Group("Preview", grid);
+    }
+
+    GroupBox BuildFilmGroup()
+    {
+        var grid = Grid();
+        (_grain, _grainValue) = AddSlider(grid, "Grain", 0, 100);
+        (_weave, _weaveValue) = AddSlider(grid, "Gate weave", 0, 100);
+        (_lens, _lensValue) = AddSlider(grid, "Lens softness", 0, 100);
+        (_halation, _halationValue) = AddSlider(grid, "Halation", 0, 100);
+        (_flicker, _flickerValue) = AddSlider(grid, "Flicker", 0, 100);
+        const string scale = " 50 is the reference look, 0 turns it off, 100 doubles it.";
+        _tips.SetToolTip(_grain, "Film grain, changing 24 times per second." + scale);
+        _tips.SetToolTip(_weave, "Slight drift of the whole picture, like film moving in a projector gate." + scale);
+        _tips.SetToolTip(_lens, "Lens blur and red and blue color fringes toward the screen edges." + scale);
+        _tips.SetToolTip(_halation, "Warm red halo around bright lights. Needs a bloom intensity above 0." + scale);
+        _tips.SetToolTip(_flicker, "Brightness variation of the projection lamp." + scale);
+        return Group("Film treatment", grid);
     }
 
     GroupBox BuildDisplayGroup()
@@ -187,6 +210,30 @@ internal sealed class SettingsForm : Form
         _ok.Click += (_, _) => Accept();
         _cancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
         return bar;
+    }
+
+    void AddTab(string title, Control content)
+    {
+        // Plain dialog color: track bars cannot draw over the themed white page background.
+        var page = new TabPage(title) { Padding = new Padding(6), UseVisualStyleBackColor = false, BackColor = SystemColors.Control };
+        page.Controls.Add(content);
+        _tabs.TabPages.Add(page);
+    }
+
+    /// <summary>A tab control does not size itself: fit it to the tallest and widest page.</summary>
+    void FitTabs()
+    {
+        float scale = DeviceDpi / 96f * _uiScale;
+        _tabs.ItemSize = new Size(0, (int)Math.Round(MinTarget * scale));
+        int w = 0, h = 0;
+        foreach (TabPage page in _tabs.TabPages)
+        {
+            var pref = page.Controls[0].GetPreferredSize(Size.Empty);
+            w = Math.Max(w, pref.Width + page.Padding.Horizontal);
+            h = Math.Max(h, pref.Height + page.Padding.Vertical);
+        }
+        var display = _tabs.DisplayRectangle;
+        _tabs.Size = new Size(w + _tabs.Width - display.Width, h + _tabs.Height - display.Height);
     }
 
     static Control Column(params Control[] children)
@@ -283,11 +330,12 @@ internal sealed class SettingsForm : Form
         {
             Minimum = min,
             Maximum = max,
-            TickFrequency = max - min >= 50 ? 10 : 5,
+            TickStyle = TickStyle.None, // the value is shown next to the slider; no ticks keeps the window short
             SmallChange = 1,
             LargeChange = max - min >= 50 ? 10 : 5,
-            AutoSize = true,
-            MinimumSize = new Size(240, 0),
+            AutoSize = false,
+            Size = new Size(240, MinTarget),
+            MinimumSize = new Size(240, MinTarget),
             Anchor = AnchorStyles.Left | AnchorStyles.Right,
         };
         var value = new Label
@@ -368,12 +416,14 @@ internal sealed class SettingsForm : Form
         if (Math.Abs(_uiScale - 1f) > 0.001f)
             Scale(new SizeF(_uiScale, _uiScale)); // development option: emulate a display scale
         UpdateComboHeight();
+        FitTabs();
     }
 
     protected override void OnDpiChanged(DpiChangedEventArgs e)
     {
         base.OnDpiChanged(e);
         UpdateComboHeight();
+        FitTabs();
     }
 
     protected override void OnShown(EventArgs e)
@@ -427,6 +477,11 @@ internal sealed class SettingsForm : Form
         _colorSpeed.Value = s.ColorChangeSpeed;
         _bloom.Value = s.BloomIntensity;
         _lineWidth.Value = s.CenterLineWidth;
+        _grain.Value = s.FilmGrain;
+        _weave.Value = s.FilmGateWeave;
+        _lens.Value = s.FilmLensSoftness;
+        _halation.Value = s.FilmHalation;
+        _flicker.Value = s.FilmFlicker;
         _customFps.Text = s.CustomFrameRate.ToString();
         _vsync.Checked = s.VerticalSync;
         _diag.Checked = s.ShowDiagnostics;
@@ -457,6 +512,11 @@ internal sealed class SettingsForm : Form
         s.ColorChangeSpeed = _colorSpeed.Value;
         s.BloomIntensity = _bloom.Value;
         s.CenterLineWidth = _lineWidth.Value;
+        s.FilmGrain = _grain.Value;
+        s.FilmGateWeave = _weave.Value;
+        s.FilmLensSoftness = _lens.Value;
+        s.FilmHalation = _halation.Value;
+        s.FilmFlicker = _flicker.Value;
         if (TryParseFps(out int fps)) s.CustomFrameRate = fps;
         s.VerticalSync = _vsync.Checked;
         s.ShowDiagnostics = _diag.Checked;
@@ -470,6 +530,11 @@ internal sealed class SettingsForm : Form
         _colorSpeedValue.Text = _colorSpeed.Value.ToString();
         _bloomValue.Text = _bloom.Value.ToString();
         _lineWidthValue.Text = $"{_lineWidth.Value} px";
+        _grainValue.Text = _grain.Value.ToString();
+        _weaveValue.Text = _weave.Value.ToString();
+        _lensValue.Text = _lens.Value.ToString();
+        _halationValue.Text = _halation.Value.ToString();
+        _flickerValue.Text = _flicker.Value.ToString();
         _customFps.Enabled = _fpsCustom.Checked;
     }
 

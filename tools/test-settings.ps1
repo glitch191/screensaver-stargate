@@ -32,6 +32,11 @@ try {
     $id = Run-Windowed 3
     Log-Lines $id | Where-Object { $_ -match "Settings file|Render loop ended" } | ForEach-Object { Write-Host "invalid values:  $_" }
 
+    # 2b. Out-of-range film values alone are clamped (no unknown enum, so the file is used).
+    Set-Content -Path $file -Value '{ "FilmGrain": 500, "FilmHalation": -3 }' -Encoding utf8
+    $id = Run-Windowed 3
+    Log-Lines $id | Where-Object { $_ -match "Settings file|Render loop ended" } | ForEach-Object { Write-Host "film values:     $_" }
+
     # 3. Frame rate options.
     $cases = @(
         @{ Name = "vsync on, automatic"; Json = '{ "VerticalSync": true, "FrameRateLimit": "Automatic" }' },

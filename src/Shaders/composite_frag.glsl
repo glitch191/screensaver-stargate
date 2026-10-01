@@ -18,6 +18,12 @@ uniform float uTextScale;
 uniform float uTime;            // seconds of simulated time, wrapped
 uniform float uFilmScale;       // screen height / 1080, so the grain looks the same at every resolution
 uniform int uVertical;          // 1 = horizontal center line (walls above and below)
+// Film effect multipliers from the settings: 1 is the reference look, 0 is off.
+uniform float uGrain;
+uniform float uWeave;
+uniform float uLens;
+uniform float uHalation;
+uniform float uFlicker;
 
 const int TEXT_COLS = 44;
 const int TEXT_ROWS = 4;
@@ -81,22 +87,23 @@ void main()
     uint frame = uint(floor(uTime * FILM_FPS));
 
     // Gate weave: the whole picture drifts by about a pixel, like film in a projector gate.
-    vec2 weave = (vec2(noise1(uTime * 1.3, 11u), noise1(uTime * 0.9, 23u)) - 0.5) * 2.0 * WEAVE_PX * uFilmScale;
+    vec2 weave = (vec2(noise1(uTime * 1.3, 11u), noise1(uTime * 0.9, 23u)) - 0.5) * 2.0 * WEAVE_PX * uWeave * uFilmScale;
     vec2 uv = (gl_FragCoord.xy + weave) / uRes;
 
     // Lens: softness from two half-pixel taps, and a radial red/blue split toward the edges.
     vec2 dc = uv - 0.5;
-    vec2 ca = dc * (ABERRATION * 2.0) * vec2(1.0, uRes.x / uRes.y);
-    vec2 soft = vec2(0.8, 0.6) * uFilmScale / uRes;
+    vec2 ca = dc * (ABERRATION * 2.0 * uLens) * vec2(1.0, uRes.x / uRes.y);
+    vec2 soft = vec2(0.8, 0.6) * uLens * uFilmScale / uRes;
     vec3 c = 0.5 * (sceneAt(uv + soft, ca) + sceneAt(uv - soft, ca));
 
     // Glow with a warm halation component.
     vec3 glow = texture(uBloom, uv).rgb * uBloomStrength;
     float glowLum = dot(glow, vec3(0.3, 0.55, 0.15));
-    c += glow * (1.0 - HALATION * 0.5) + vec3(1.0, 0.32, 0.12) * glowLum * HALATION;
+    float halation = HALATION * uHalation;
+    c += glow * (1.0 - halation * 0.5) + vec3(1.0, 0.32, 0.12) * glowLum * halation;
 
     // Flicker of the projection lamp.
-    c *= 1.0 + 0.05 * (noise1(uTime * 7.0, 37u) - 0.5) + 0.025 * (rand3(frame, 41u, 3u) - 0.5);
+    c *= 1.0 + uFlicker * (0.05 * (noise1(uTime * 7.0, 37u) - 0.5) + 0.025 * (rand3(frame, 41u, 3u) - 0.5));
 
     // Compress highlights on the largest channel only, so hues stay saturated.
     float m = max(c.r, max(c.g, c.b));
@@ -118,7 +125,7 @@ void main()
     float g = grainNoise(gp, frame, 0x9e37u) + 0.5 * grainNoise(gp * 2.3, frame, 0x85ebu) - 0.75;
     vec3 gc = vec3(grainNoise(gp * 1.7, frame, 0xc2b2u), grainNoise(gp * 1.7, frame, 0x27d4u), grainNoise(gp * 1.7, frame, 0x1656u)) - 0.5;
     float lum = dot(outc, vec3(0.2126, 0.7152, 0.0722));
-    float amp = GRAIN * (0.35 + 0.65 * sqrt(lum)) * (1.0 - 0.5 * lum * lum);
+    float amp = GRAIN * uGrain * (0.35 + 0.65 * sqrt(lum)) * (1.0 - 0.5 * lum * lum);
     outc += (vec3(g) + gc * 0.35) * amp;
 
     // Center line coverage, over everything above, applied in display values
