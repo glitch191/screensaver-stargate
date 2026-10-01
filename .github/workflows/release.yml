@@ -1,0 +1,69 @@
+# Builds dist/ScreensaverStargate.scr on Windows with build.ps1 (timing checks included)
+# and attaches it to a GitHub release.
+# - Publishing a release builds the tag of that release and attaches the file.
+# - A manual run builds an existing tag; "replace" overwrites an asset that is already attached.
+# A CI build is not byte-identical to a local build, so its SHA-256 differs.
+name: Release build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build, for example v1.1.0
+        required: true
+        type: string
+      replace:
+        description: Replace ScreensaverStargate.scr if the release already has it
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - name: Install the .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/ScreensaverStargate.scr -Algorithm SHA256).Hash
+          $size = (Get-Item dist/ScreensaverStargate.scr).Length
+          "ScreensaverStargate.scr for $($env:TAG): $size bytes, SHA-256 $hash" | Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY
+
+      - name: Keep the build as a workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ScreensaverStargate-${{ env.TAG }}
+          path: dist/ScreensaverStargate.scr
+          if-no-files-found: error
+
+      - name: Attach to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPLACE: ${{ inputs.replace }}
+        run: |
+          $upload = @('release', 'upload', $env:TAG, 'dist/ScreensaverStargate.scr', '--repo', $env:GITHUB_REPOSITORY)
+          if ($env:REPLACE -eq 'true') { $upload += '--clobber' }
+          gh @upload
+          if ($LASTEXITCODE -ne 0) { throw "Upload failed. If the release already has ScreensaverStargate.scr, run the workflow manually with 'replace' checked." }
